@@ -46,7 +46,6 @@ class Selection_Dataset(Dataset):
             self.spo_list.append(instance['spo_list'])
 
     def __getitem__(self, index):
-        print ("get item")
         selection = self.selection_list[index]
         text = self.text_list[index]
         bio = self.bio_list[index]
@@ -66,7 +65,6 @@ class Selection_Dataset(Dataset):
         return len(self.text_list)
 
     def pad_bert(self, text: List[str], bio: List[str], selection: List[Dict[str, int]]) -> Tuple[List[str], List[str], Dict[str, int]]:
-        print ("pad_bert")
         # for [CLS] and [SEP]
         text = ['[CLS]'] + text + ['[SEP]']
         bio = ['O'] + bio + ['O']
@@ -78,7 +76,6 @@ class Selection_Dataset(Dataset):
 
     def text2tensor(self, text: List[str]) -> torch.tensor:
         # TODO: tokenizer
-        print ("text2tensor")
         oov = self.word_vocab['oov']
         padded_list = list(map(lambda x: self.word_vocab.get(x, oov), text))
         padded_list.extend([self.word_vocab['<pad>']] *
@@ -86,7 +83,6 @@ class Selection_Dataset(Dataset):
         return torch.tensor(padded_list)
 
     def bio2tensor(self, bio):
-        print ("bio2tensor")
         # here we pad bio with "O". Then, in our model, we will mask this "O" padding.
         # in multi-head selection, we will use "<pad>" token embedding instead.
         padded_list = list(map(lambda x: self.bio_vocab[x], bio))
@@ -96,7 +92,6 @@ class Selection_Dataset(Dataset):
 
     def selection2tensor(self, text, selection):
         # s p o
-        print ("selection2tensor")
         result = torch.zeros(
             (self.hyper.max_text_len, len(self.relation_vocab),
              self.hyper.max_text_len))
@@ -131,7 +126,6 @@ class Batch_reader(object):
         self.bio = transposed_data[6]
 
     def pin_memory(self):
-        print ("pin_memory")
         self.tokens_id = self.tokens_id.pin_memory()
         self.bio_id = self.bio_id.pin_memory()
         self.selection_id = self.selection_id.pin_memory()

@@ -110,7 +110,7 @@ class MultiHeadSelection(nn.Module):
                           mask.unsqueeze(1)).unsqueeze(2).expand(
                               -1, -1, len(self.relation_vocab),
                               -1)  # batch x seq x rel x seq
-        print ("selection_mask", selection_mask)
+        print ("selection_mask", selection_mask.shape)
         selection_tags = (torch.sigmoid(selection_logits) *
                           selection_mask.float()) > self.hyper.threshold
         print ("selection_tags", selection_tags)
@@ -130,7 +130,7 @@ class MultiHeadSelection(nn.Module):
         selection_loss = F.binary_cross_entropy_with_logits(selection_logits,
                                                             selection_gold,
                                                             reduction='none')
-        print ("selection_loss", selection_loss)
+        print ("selection_loss", selection_loss.shape)
         selection_loss = selection_loss.masked_select(selection_mask).sum()
         print ("selection_loss", selection_loss)
         selection_loss /= mask.sum()
