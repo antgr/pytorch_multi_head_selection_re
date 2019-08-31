@@ -24,10 +24,13 @@ class MultiHeadSelection(nn.Module):
 
         self.word_vocab = json.load(
             open(os.path.join(self.data_root, 'word_vocab.json'), 'r'))
+        print ("self.word_vocab:", self.word_vocab)
         self.relation_vocab = json.load(
             open(os.path.join(self.data_root, 'relation_vocab.json'), 'r'))
+        print ("self.relation_vocab:", self.relation_vocab)
         self.bio_vocab = json.load(
             open(os.path.join(self.data_root, 'bio_vocab.json'), 'r'))
+        print ("self.bio_vocab:", self.bio_vocab)
         self.id2bio = {v: k for k, v in self.bio_vocab.items()}
 
         self.word_embeddings = nn.Embedding(num_embeddings=len(
@@ -146,13 +149,19 @@ class MultiHeadSelection(nn.Module):
     def forward(self, sample, is_train: bool) -> Dict[str, torch.Tensor]:
         print ("forward")
         tokens = sample.tokens_id.cuda(self.gpu)
+        print ("tokens:", tokens.shape)
         selection_gold = sample.selection_id.cuda(self.gpu)
+        print ("selection_gold:", selection_gold.shape)
         bio_gold = sample.bio_id.cuda(self.gpu)
+        print ("bio_gold:", bio_gold.shape)
 
         text_list = sample.text
+        print ("text_list:", text_list.shape)
         spo_gold = sample.spo_gold
+        print ("spo_gold:", spo_gold.shape)
 
         bio_text = sample.bio
+        print ("bio_text:", bio_text.shape)
 
         if self.hyper.cell_name in ('gru', 'lstm'):
             mask = tokens != self.word_vocab['<pad>']  # batch x seq
@@ -168,18 +177,24 @@ class MultiHeadSelection(nn.Module):
 
         if self.hyper.cell_name in ('lstm', 'gru'):
             embedded = self.word_embeddings(tokens)
+            print ("embedded:", embedded.shape)
             o, h = self.encoder(embedded)
+            print ("o:", o.shape)
+            print ("h:", h.shape)
 
             o = (lambda a: sum(a) / 2)(torch.split(o,
                                                    self.hyper.hidden_size,
                                                    dim=2))
+            print ("o", o.shape)
         elif self.hyper.cell_name == 'bert':
             # with torch.no_grad():
             o = self.encoder(tokens, attention_mask=mask)[
                 0]  # last hidden of BERT
+            print ("o:", o.shape)
             # o = self.activation(o)
             # torch.Size([16, 310, 768])
             o = self.bert2hidden(o)
+            print ("o:", o.shape)
 
             # below for bert+lstm
             # o, h = self.post_lstm(o)
@@ -190,6 +205,7 @@ class MultiHeadSelection(nn.Module):
         else:
             raise ValueError('unexpected encoder name!')
         emi = self.emission(o)
+        print ("emi:", emi.shape)
 
         output = {}
 
@@ -198,8 +214,10 @@ class MultiHeadSelection(nn.Module):
         if is_train:
             crf_loss = -self.tagger(emi, bio_gold,
                                     mask=bio_mask, reduction='mean')
+            print ("crf_loss:", crf_loss)
         else:
             decoded_tag = self.tagger.decode(emissions=emi, mask=bio_mask)
+            print ("decoded_tag", decoded_tag
 
             output['decoded_tag'] = [list(map(lambda x : self.id2bio[x], tags)) for tags in decoded_tag]
             output['gold_tags'] = bio_text
@@ -209,20 +227,29 @@ class MultiHeadSelection(nn.Module):
                 line.extend([self.bio_vocab['<pad>']] *
                             (self.hyper.max_text_len - len(line)))
             bio_gold = torch.tensor(temp_tag).cuda(self.gpu)
+            print ("bio_gold", bio_gold)
 
         tag_emb = self.bio_emb(bio_gold)
+        print ("tag_emb", tag_emb.shape)
 
         o = torch.cat((o, tag_emb), dim=2)
+        print ("o:", o.shape)
 
         # forward multi head selection
         B, L, H = o.size()
+        print ("B", B)
+        print ("L", L)
+        print ("H", H)
         u = self.activation(self.selection_u(o)).unsqueeze(1).expand(B, L, L, -1)
+        print ("u:",u.shape)
         v = self.activation(self.selection_v(o)).unsqueeze(2).expand(B, L, L, -1)
+        print ("v:", v.shape)
         uv = self.activation(self.selection_uv(torch.cat((u, v), dim=-1)))
-
+        print ("uv:", uv.shaoe)
         # correct one
         selection_logits = torch.einsum('bijh,rh->birj', uv,
                                         self.relation_emb.weight)
+        print ("selection_logits:", selection_logits.shape)
 
         # use loop instead of matrix
         # selection_logits_list = []
@@ -246,11 +273,13 @@ class MultiHeadSelection(nn.Module):
                                                  selection_gold)
 
         loss = crf_loss + selection_loss
+        print ("loss", loss)
         output['crf_loss'] = crf_loss
         output['selection_loss'] = selection_loss
         output['loss'] = loss
 
         output['description'] = partial(self.description, output=output)
+        print ("output", output)
         return output
 
     def selection_decode(self, text_list, sequence_tags,
@@ -267,6 +296,7 @@ class MultiHeadSelection(nn.Module):
         text_list = list(map(list, text_list))
 
         def find_entity(pos, text, sequence_tags):
+            print ("find entity")
             entity = []
 
             if sequence_tags[pos] in ('B', 'O'):
