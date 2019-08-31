@@ -45,7 +45,9 @@ class Runner(object):
         self.gpu = self.hyper.gpu
         self.preprocessor = None
         self.triplet_metrics = F1_triplet()
+        print ("F1_triplet()", self.triplet_metrics)
         self.ner_metrics = F1_ner()
+        print ("F1_ner()", self.ner_metrics)
         self.optimizer = None
         self.model = None
 
@@ -59,51 +61,74 @@ class Runner(object):
 
     def _init_model(self):
         self.model = MultiHeadSelection(self.hyper).cuda(self.gpu)
+        print ("MultiHeadSelection(self.hyper).cuda(self.gpu)", self.model)
 
     def preprocessing(self):
+        print ("=== preprocessing === ")
         if self.exp_name == 'conll_selection_re':
             self.preprocessor = Conll_selection_preprocessing(self.hyper)
+            print ("self.preprocessor", self.preprocessor)
         elif self.exp_name == 'chinese_selection_re':
             self.preprocessor = Chinese_selection_preprocessing(self.hyper)
         elif self.exp_name == 'conll_bert_re':
             self.preprocessor = Conll_bert_preprocessing(self.hyper)
+            print ("self.preprocessor", self.preprocessor)
         self.preprocessor.gen_relation_vocab()
+        print ("call gen_relation_vocab()")
         self.preprocessor.gen_all_data()
+        print ("call gen_all_data()")
         self.preprocessor.gen_vocab(min_freq=1)
+        print ("call gen_vocab(min_freq=1)")
         # for ner only
         self.preprocessor.gen_bio_vocab()
+        print ("call gen_bio_vocab()")
+        print ("=== End preprocessing === ")
 
     def run(self, mode: str):
+        print ("===run===")
         if mode == 'preprocessing':
+            print ("==call preprocessing")
             self.preprocessing()
         elif mode == 'train':
+            print ("==call init model, optimizer and train")
             self._init_model()
             self.optimizer = self._optimizer(self.hyper.optimizer, self.model)
             self.train()
         elif mode == 'evaluation':
+            print ("==call init model, load model and evaluation")
             self._init_model()
             self.load_model(epoch=self.hyper.evaluation_epoch)
             self.evaluation()
         else:
             raise ValueError('invalid mode')
+        print ("end run")
 
     def load_model(self, epoch: int):
+        print ("load model")
         self.model.load_state_dict(
             torch.load(
                 os.path.join(self.model_dir,
                              self.exp_name + '_' + str(epoch))))
+        print ("end load model")
 
     def save_model(self, epoch: int):
+        print ("save model")
         if not os.path.exists(self.model_dir):
             os.mkdir(self.model_dir)
         torch.save(
             self.model.state_dict(),
             os.path.join(self.model_dir, self.exp_name + '_' + str(epoch)))
+        print ("end save model")
 
     def evaluation(self):
+        print ("evaluation")
         dev_set = Selection_Dataset(self.hyper, self.hyper.dev)
+        print ("dev_set type:", type(dev_set))
+        print ("loader:", loader)
         loader = Selection_loader(dev_set, batch_size=self.hyper.eval_batch, pin_memory=True)
+        print ("reset triplet metrics")
         self.triplet_metrics.reset()
+        print ("eval")
         self.model.eval()
 
         pbar = tqdm(enumerate(BackgroundGenerator(loader)), total=len(loader))
@@ -124,11 +149,18 @@ class Runner(object):
                 for name, value in ner_result.items() if not name.startswith("_")
             ]))
 
-    def train(self):
-        train_set = Selection_Dataset(self.hyper, self.hyper.train)
-        loader = Selection_loader(train_set, batch_size=self.hyper.train_batch, pin_memory=True)
+        print ("end evaluation")
 
+    def train(self):
+        print ("train")
+        train_set = Selection_Dataset(self.hyper, self.hyper.train)
+        print ("train_set", train_set)
+        loader = Selection_loader(train_set, batch_size=self.hyper.train_batch, pin_memory=True)
+        print ("loader")
+
+        print ("for epoch in range ", self.hyper.epoch_num)
         for epoch in range(self.hyper.epoch_num):
+            print ("epoch:", epoch)
             self.model.train()
             pbar = tqdm(enumerate(BackgroundGenerator(loader)),
                         total=len(loader))

@@ -15,6 +15,7 @@ from pytorch_transformers import *
 
 class MultiHeadSelection(nn.Module):
     def __init__(self, hyper) -> None:
+        print ("init MultiHeadSelection")
         super(MultiHeadSelection, self).__init__()
 
         self.hyper = hyper
@@ -32,13 +33,16 @@ class MultiHeadSelection(nn.Module):
         self.word_embeddings = nn.Embedding(num_embeddings=len(
             self.word_vocab),
             embedding_dim=hyper.emb_size)
+        print ("self.word_embeddings", self.word_embeddings)
 
         self.relation_emb = nn.Embedding(num_embeddings=len(
             self.relation_vocab),
             embedding_dim=hyper.rel_emb_size)
+        print ("self.relation_emb", self.relation_emb)
         # bio + pad
         self.bio_emb = nn.Embedding(num_embeddings=len(self.bio_vocab),
                                     embedding_dim=hyper.bio_emb_size)
+        print ("self.bio_emb", self.bio_emb)
 
         if hyper.cell_name == 'gru':
             self.encoder = nn.GRU(hyper.emb_size,
@@ -73,16 +77,22 @@ class MultiHeadSelection(nn.Module):
             raise ValueError('unexpected activation!')
 
         self.tagger = CRF(len(self.bio_vocab) - 1, batch_first=True)
+        print ("self.tagger:", self.tagger)
 
         self.selection_u = nn.Linear(hyper.hidden_size + hyper.bio_emb_size,
                                      hyper.rel_emb_size)
+        print ("self.selection_u", self.selection_u)
         self.selection_v = nn.Linear(hyper.hidden_size + hyper.bio_emb_size,
                                      hyper.rel_emb_size)
+        print ("self.selection_v", self.selection_v)
         self.selection_uv = nn.Linear(2 * hyper.rel_emb_size,
                                       hyper.rel_emb_size)
+        print ("self.selection_uv", self.selection_uv)
         self.emission = nn.Linear(hyper.hidden_size, len(self.bio_vocab) - 1)
+        print ("self.emission", self.emission)
 
         self.bert2hidden = nn.Linear(768, hyper.hidden_size)
+        print ("self.bert2hidden", self.bert2hidden)
         # for bert_lstm
         # self.bert2hidden = nn.Linear(768, hyper.emb_size)
 
@@ -90,31 +100,41 @@ class MultiHeadSelection(nn.Module):
 
             self.bert_tokenizer = BertTokenizer.from_pretrained(
                 'bert-base-uncased')
+            print ("self.bert_tokenizer", self.bert_tokenizer)
 
         # self.accuracy = F1Selection()
 
     def inference(self, mask, text_list, decoded_tag, selection_logits):
+        print ("inference")
         selection_mask = (mask.unsqueeze(2) *
                           mask.unsqueeze(1)).unsqueeze(2).expand(
                               -1, -1, len(self.relation_vocab),
                               -1)  # batch x seq x rel x seq
+        print ("selection_mask", selection_mask)
         selection_tags = (torch.sigmoid(selection_logits) *
                           selection_mask.float()) > self.hyper.threshold
+        print ("selection_tags", selection_tags)
 
         selection_triplets = self.selection_decode(text_list, decoded_tag,
                                                    selection_tags)
+        print ("selection_triplets", selection_triplets)
         return selection_triplets
 
     def masked_BCEloss(self, mask, selection_logits, selection_gold):
+        print ("masked_BCEloss")
         selection_mask = (mask.unsqueeze(2) *
                           mask.unsqueeze(1)).unsqueeze(2).expand(
                               -1, -1, len(self.relation_vocab),
                               -1)  # batch x seq x rel x seq
+        print ("selection_mask", selection_mask)
         selection_loss = F.binary_cross_entropy_with_logits(selection_logits,
                                                             selection_gold,
                                                             reduction='none')
+        print ("selection_loss", selection_loss)
         selection_loss = selection_loss.masked_select(selection_mask).sum()
+        print ("selection_loss", selection_loss)
         selection_loss /= mask.sum()
+        print ("selection_loss", selection_loss)
         return selection_loss
 
     @staticmethod
@@ -124,7 +144,7 @@ class MultiHeadSelection(nn.Module):
             output['selection_loss'].item(), epoch, epoch_num)
 
     def forward(self, sample, is_train: bool) -> Dict[str, torch.Tensor]:
-
+        print ("forward")
         tokens = sample.tokens_id.cuda(self.gpu)
         selection_gold = sample.selection_id.cuda(self.gpu)
         bio_gold = sample.bio_id.cuda(self.gpu)
@@ -236,6 +256,7 @@ class MultiHeadSelection(nn.Module):
     def selection_decode(self, text_list, sequence_tags,
                          selection_tags: torch.Tensor
                          ) -> List[List[Dict[str, str]]]:
+        print ("selection_decode")
         reversed_relation_vocab = {
             v: k
             for k, v in self.relation_vocab.items()
@@ -284,6 +305,7 @@ class MultiHeadSelection(nn.Module):
                 'subject': subject
             }
             result[b].append(triplet)
+        print ("end selection_decode")
         return result
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 @dataclass
 class Hyper(object):
     def __init__(self, path: str):
+        print ("=== init hyper, contains variables only")
         self.dataset: str
         self.model: str
         self.data_root: str
