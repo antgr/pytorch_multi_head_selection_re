@@ -180,7 +180,7 @@ class MultiHeadSelection(nn.Module):
             print ("embedded:", embedded.shape)
             o, h = self.encoder(embedded)
             print ("o:", o.shape)
-            print ("h:", h.shape)
+            print ("h:", h)
 
             o = (lambda a: sum(a) / 2)(torch.split(o,
                                                    self.hyper.hidden_size,
