@@ -156,7 +156,7 @@ class MultiHeadSelection(nn.Module):
         print ("bio_gold:", bio_gold.shape)
 
         text_list = sample.text
-        print ("text_list:", text_list.shape)
+        #print ("text_list:", text_list)
         spo_gold = sample.spo_gold
         print ("spo_gold:", spo_gold.shape)
 
