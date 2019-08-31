@@ -161,7 +161,7 @@ class MultiHeadSelection(nn.Module):
         print ("spo_gold:", spo_gold)
 
         bio_text = sample.bio
-        print ("bio_text:", bio_text.shape)
+        print ("bio_text:", bio_text)
 
         if self.hyper.cell_name in ('gru', 'lstm'):
             mask = tokens != self.word_vocab['<pad>']  # batch x seq
