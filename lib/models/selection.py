@@ -126,7 +126,7 @@ class MultiHeadSelection(nn.Module):
                           mask.unsqueeze(1)).unsqueeze(2).expand(
                               -1, -1, len(self.relation_vocab),
                               -1)  # batch x seq x rel x seq
-        print ("selection_mask", selection_mask)
+        print ("selection_mask", selection_mask.shape)
         selection_loss = F.binary_cross_entropy_with_logits(selection_logits,
                                                             selection_gold,
                                                             reduction='none')
