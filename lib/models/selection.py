@@ -180,7 +180,8 @@ class MultiHeadSelection(nn.Module):
             print ("embedded:", embedded.shape)
             o, h = self.encoder(embedded)
             print ("o:", o.shape)
-            print ("h:", h)
+            print ("h[0]:", h[0].shape)
+            print ("h[1]:", h[1].shape)
 
             o = (lambda a: sum(a) / 2)(torch.split(o,
                                                    self.hyper.hidden_size,
@@ -245,7 +246,7 @@ class MultiHeadSelection(nn.Module):
         v = self.activation(self.selection_v(o)).unsqueeze(2).expand(B, L, L, -1)
         print ("v:", v.shape)
         uv = self.activation(self.selection_uv(torch.cat((u, v), dim=-1)))
-        print ("uv:", uv.shaoe)
+        print ("uv:", uv.shape)
         # correct one
         selection_logits = torch.einsum('bijh,rh->birj', uv,
                                         self.relation_emb.weight)
