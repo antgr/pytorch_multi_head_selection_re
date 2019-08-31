@@ -217,7 +217,7 @@ class MultiHeadSelection(nn.Module):
             print ("crf_loss:", crf_loss)
         else:
             decoded_tag = self.tagger.decode(emissions=emi, mask=bio_mask)
-            print ("decoded_tag", decoded_tag
+            print ("decoded_tag", decoded_tag)
 
             output['decoded_tag'] = [list(map(lambda x : self.id2bio[x], tags)) for tags in decoded_tag]
             output['gold_tags'] = bio_text
