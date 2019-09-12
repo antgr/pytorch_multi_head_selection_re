@@ -8,7 +8,7 @@
     "relation_vocab": "relation_vocab.json",
     "print_epoch": 3,
     "evaluation_epoch":27,
-    "max_text_len": 348,
+    "max_text_len": 100,
     "cell_name": "lstm",
     "emb_size": 300,
     "rel_emb_size": 100,
